@@ -52,3 +52,16 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+/.vs/CallOrPassAnalyzer.slnx/FileContentIndex/950265b9-e596-42c8-9d1e-02212866bd4f.vsidx
+/.vs/CallOrPassAnalyzer.slnx/v18/TestStore/0/000.testlog
+/.vs/CallOrPassAnalyzer.slnx/v18/TestStore/0/testlog.manifest
+/.vs/CallOrPassAnalyzer.slnx/v18/.suo
+/.vs/CallOrPassAnalyzer.slnx/v18/DocumentLayout.backup.json
+/.vs/CallOrPassAnalyzer.slnx/v18/DocumentLayout.json
+/.vs/CallOrPassAnalyzer/CopilotIndices/18.0.988.22099/CodeChunks.db
+/.vs/CallOrPassAnalyzer/CopilotIndices/18.0.988.22099/CodeChunks.db-shm
+/.vs/CallOrPassAnalyzer/CopilotIndices/18.0.988.22099/CodeChunks.db-wal
+/.vs/CallOrPassAnalyzer/CopilotIndices/18.0.988.22099/SemanticSymbols.db
+/.vs/CallOrPassAnalyzer/CopilotIndices/18.0.988.22099/SemanticSymbols.db-shm
+/.vs/CallOrPassAnalyzer/CopilotIndices/18.0.988.22099/SemanticSymbols.db-wal
+/CallOrPassAnalyzer.sln.DotSettings.user

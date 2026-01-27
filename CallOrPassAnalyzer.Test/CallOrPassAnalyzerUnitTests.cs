@@ -1,0 +1,100 @@
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Threading.Tasks;
+using VerifyCS = CallOrPassAnalyzer.Test.CSharpAnalyzerVerifier<CallOrPassAnalyzer.CallOrPassAnalyzerAnalyzer>;
+
+namespace CallOrPassAnalyzer.Test
+{
+    [TestClass]
+    public class CallOrPassAnalyzerUnitTest
+    {
+        [TestMethod]
+        public async Task EmptyCode_NoDiagnostic()
+        {
+            var test = @"";
+            await VerifyCS.VerifyAnalyzerAsync(test);
+        }
+
+        [TestMethod]
+        public async Task OnlyMemberAccess_NoDiagnostic()
+        {
+            var test = @"
+using System.Collections.Generic;
+
+class TestClass
+{
+    void Method(List<int> items)
+    {
+        items.Add(42);
+        items.Clear();
+        var x = items.Count;
+    }
+}";
+            await VerifyCS.VerifyAnalyzerAsync(test);
+        }
+
+        [TestMethod]
+        public async Task OnlyPassAsArgument_NoDiagnostic()
+        {
+            var test = @"
+using System.Collections.Generic;
+
+class TestClass
+{
+    void Method(List<int> items)
+    {
+        Save(items);
+        Process(items);
+    }
+
+    void Save(List<int> x) { }
+    void Process(List<int> x) { }
+}";
+            await VerifyCS.VerifyAnalyzerAsync(test);
+        }
+
+        [TestMethod]
+        public async Task BothCallAndPass_Diagnostic()
+        {
+            var test = @"
+using System.Collections.Generic;
+
+class TestClass
+{
+    void Method(List<int> {|#0:items|})
+    {
+        items.Add(42);
+        Save(items);
+    }
+
+    void Save(List<int> x) { }
+}";
+
+            var expected = VerifyCS.Diagnostic("COP001")
+                .WithLocation(0)
+                .WithArguments("items");
+
+            await VerifyCS.VerifyAnalyzerAsync(test, expected);
+        }
+
+        [TestMethod]
+        public async Task LocalVariable_NoDiagnostic()
+        {
+            var test = @"
+using System.Collections.Generic;
+
+class TestClass
+{
+    void Method()
+    {
+        var items = new List<int>();
+        items.Add(42);
+        Save(items);
+    }
+
+    void Save(List<int> x) { }
+}";
+            // Lokale Variablen sind OK - nur Parameter werden geprüft
+            await VerifyCS.VerifyAnalyzerAsync(test);
+        }
+    }
+}
