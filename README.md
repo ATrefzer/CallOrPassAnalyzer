@@ -34,7 +34,7 @@ void Process(List<int> items)
 
 ## Why This Rule? 
 
-I stumbled upon this principle in the Book "Five Lines of Code" and immediately liked it. It is a very simple principle that can increase the readability of your code. It has similarities with the IOSP (Integration, Operation, Segregation) principle.
+I stumbled upon this principle in the Book "Five Lines of Code" and immediately liked it. It is a very simple principle that can increase the readability of your code. It has similarities with the [IOSP (Integration, Operation, Segregation)](https://ralfwestphal.substack.com/p/integration-operation-segregation?utm_source=substack&utm_campaign=post_embed&utm_medium=web) principle.
 
 When a method both uses a parameter directly and additionally passes it to other methods, it likely operates on two different abstraction levels.
 
