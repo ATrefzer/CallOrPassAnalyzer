@@ -1,45 +1,46 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
-    <IncludeBuildOutput>false</IncludeBuildOutput>
-    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFramework>netstandard2.0</TargetFramework>
+		<IncludeBuildOutput>false</IncludeBuildOutput>
+		<SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+	</PropertyGroup>
 
-  <PropertyGroup>
-    <PackageId>CallOrPassAnalyzer</PackageId>
-    <PackageVersion>1.0.0.0</PackageVersion>
-    <Authors>xmmtrea</Authors>
-    <PackageLicenseUrl>http://LICENSE_URL_HERE_OR_DELETE_THIS_LINE</PackageLicenseUrl>
-    <PackageProjectUrl>http://PROJECT_URL_HERE_OR_DELETE_THIS_LINE</PackageProjectUrl>
-    <PackageIconUrl>http://ICON_URL_HERE_OR_DELETE_THIS_LINE</PackageIconUrl>
-    <RepositoryUrl>http://REPOSITORY_URL_HERE_OR_DELETE_THIS_LINE</RepositoryUrl>
-    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-    <Description>CallOrPassAnalyzer</Description>
-    <PackageReleaseNotes>Summary of changes made in this release of the package.</PackageReleaseNotes>
-    <Copyright>Copyright</Copyright>
-    <PackageTags>CallOrPassAnalyzer, analyzers</PackageTags>
-    <DevelopmentDependency>true</DevelopmentDependency>
-    <NoPackageAnalysis>true</NoPackageAnalysis>
+	<PropertyGroup>
+		<PackageId>CallOrPassAnalyzer</PackageId>
+		<PackageVersion>1.0.0.3</PackageVersion>
+		<Authors>Andreas Trefzer</Authors>
+		<PackageProjectUrl>https://github.com/ATrefzer/CallOrPassAnalyzer</PackageProjectUrl>
+		<RepositoryUrl>https://github.com/ATrefzer/CallOrPassAnalyzer</RepositoryUrl>
+		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<Description>Diagnostic extension for the .NET Compiler Platform ("Roslyn").&#10;
+It checks the "call or pass" rule: An object passed to a method is either used or passed to another method, but not both.&#10;
+Based on the principle from "Five Lines of Code" by Christian Clausen.
+		</Description>
 
-    <TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);_AddAnalyzersToOutput</TargetsForTfmSpecificContentInPackage>
-  </PropertyGroup>
+		<PackageTags>roslyn;analyzer;clean-code;code-quality</PackageTags>
+		<DevelopmentDependency>true</DevelopmentDependency>
+		<NoPackageAnalysis>true</NoPackageAnalysis>
 
-  <ItemGroup>
-    <ProjectReference Include="..\CallOrPassAnalyzer.CodeFixes\CallOrPassAnalyzer.CodeFixes.csproj" />
-    <ProjectReference Include="..\CallOrPassAnalyzer\CallOrPassAnalyzer.csproj" />
-  </ItemGroup>
+		<TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);_AddAnalyzersToOutput</TargetsForTfmSpecificContentInPackage>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <None Update="tools\*.ps1" CopyToOutputDirectory="PreserveNewest" Pack="true" PackagePath="" />
-  </ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\CallOrPassAnalyzer.CodeFixes\CallOrPassAnalyzer.CodeFixes.csproj" />
+		<ProjectReference Include="..\CallOrPassAnalyzer\CallOrPassAnalyzer.csproj" />
+	</ItemGroup>
 
-  <Target Name="_AddAnalyzersToOutput">
-    <ItemGroup>
-      <TfmSpecificPackageFile Include="$(OutputPath)\CallOrPassAnalyzer.dll" PackagePath="analyzers/dotnet/cs" />
-      <TfmSpecificPackageFile Include="$(OutputPath)\CallOrPassAnalyzer.CodeFixes.dll" PackagePath="analyzers/dotnet/cs" />
-    </ItemGroup>
-  </Target>
+	<ItemGroup>
+		<None Update="tools\*.ps1" CopyToOutputDirectory="PreserveNewest" Pack="true" PackagePath="" />
+	</ItemGroup>
+
+	<Target Name="_AddAnalyzersToOutput">
+		<ItemGroup>
+			<TfmSpecificPackageFile Include="$(OutputPath)\CallOrPassAnalyzer.dll" PackagePath="analyzers/dotnet/cs" />
+			<TfmSpecificPackageFile Include="$(OutputPath)\CallOrPassAnalyzer.CodeFixes.dll" PackagePath="analyzers/dotnet/cs" />
+		</ItemGroup>
+	</Target>
 
 </Project>

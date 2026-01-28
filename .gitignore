@@ -65,3 +65,5 @@ nunit-*.xml
 /.vs/CallOrPassAnalyzer/CopilotIndices/18.0.988.22099/SemanticSymbols.db-shm
 /.vs/CallOrPassAnalyzer/CopilotIndices/18.0.988.22099/SemanticSymbols.db-wal
 /CallOrPassAnalyzer.sln.DotSettings.user
+/.vs/CallOrPassAnalyzer.slnx/DesignTimeBuild/.dtbcache.v2
+/.vs/CallOrPassAnalyzer.slnx/FileContentIndex/99aef961-dd93-47bf-8e33-46b6848a22a3.vsidx

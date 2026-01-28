@@ -1,9 +1,9 @@
-﻿using Microsoft.CodeAnalysis;
+﻿using System.Collections.Immutable;
+using System.Linq;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
-using System.Collections.Immutable;
-using System.Linq;
 
 namespace CallOrPassAnalyzer
 {
@@ -11,6 +11,8 @@ namespace CallOrPassAnalyzer
     public class CallOrPassAnalyzerAnalyzer : DiagnosticAnalyzer
     {
         public const string DiagnosticId = "COP001";
+
+        private const string Category = "Design";
 
         private static readonly LocalizableString Title =
             "Parameter is both called and passed";
@@ -22,16 +24,14 @@ namespace CallOrPassAnalyzer
             "A method should either call methods on a parameter or pass it to other methods, not both. " +
             "This is known as the 'Either call or pass' rule from 'Five Lines of Code'.";
 
-        private const string Category = "Design";
-
         private static readonly DiagnosticDescriptor Rule = new DiagnosticDescriptor(
             DiagnosticId,
             Title,
             MessageFormat,
             Category,
             DiagnosticSeverity.Warning,
-            isEnabledByDefault: true,
-            description: Description);
+            true,
+            Description);
 
         public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics
             => ImmutableArray.Create(Rule);
@@ -54,37 +54,58 @@ namespace CallOrPassAnalyzer
 
             // Skip methods without body (abstract, interface, extern)
             if (methodDeclaration.Body == null && methodDeclaration.ExpressionBody == null)
+            {
                 return;
+            }
 
             // Get the method body (either block body or expression body)
-            SyntaxNode body = (SyntaxNode)methodDeclaration.Body
-                              ?? methodDeclaration.ExpressionBody;
+            var body = (SyntaxNode)methodDeclaration.Body
+                       ?? methodDeclaration.ExpressionBody;
 
-            // Check each parameter
+            var semanticModel = context.SemanticModel;
+
             foreach (var parameter in methodDeclaration.ParameterList.Parameters)
             {
-                AnalyzeParameter(context, parameter, body);
+                AnalyzeParameter(context, parameter, body, semanticModel);
             }
         }
 
         private static void AnalyzeParameter(
             SyntaxNodeAnalysisContext context,
             ParameterSyntax parameter,
-            SyntaxNode body)
+            SyntaxNode body,
+            SemanticModel semanticModel)
         {
-            var parameterName = parameter.Identifier.Text;
+            // Get the symbol of the parameter
+            var parameterSymbol = semanticModel.GetDeclaredSymbol(parameter);
+            if (parameterSymbol == null)
+            {
+                return;
+            }
 
-            bool hasMemberAccess = false;
-            bool isPassedAsArgument = false;
+            var hasMemberAccess = false;
+            var isPassedAsArgument = false;
 
-            // Find all usages of this parameter name in the method body
+            // Find all usages of this identifier in body
             var identifiers = body.DescendantNodes()
-                .OfType<IdentifierNameSyntax>()
-                .Where(id => id.Identifier.Text == parameterName);
+                .OfType<IdentifierNameSyntax>();
 
             foreach (var identifier in identifiers)
             {
-                // Check: Is this a member access? (e.g., "items.Add", "items.Count")
+                // Prüfen: Verweist dieser Identifier auf unseren Parameter?
+                var symbol = semanticModel.GetSymbolInfo(identifier).Symbol;
+
+                if (!SymbolEqualityComparer.Default.Equals(symbol, parameterSymbol))
+                {
+                    continue;
+                }
+
+                // Special case: ignore nameof(parameter)
+                if (IsInsideNameof(identifier))
+                {
+                    continue;
+                }
+
                 if (IsMemberAccess(identifier))
                 {
                     hasMemberAccess = true;
@@ -96,13 +117,13 @@ namespace CallOrPassAnalyzer
                     isPassedAsArgument = true;
                 }
 
-                // Early exit if violation found
                 if (hasMemberAccess && isPassedAsArgument)
                 {
+                    // Violation found
                     var diagnostic = Diagnostic.Create(
                         Rule,
-                        parameter.Identifier.GetLocation(),  // ← Location only of the name
-                        parameterName);
+                        parameter.Identifier.GetLocation(),
+                        parameterSymbol.Name);
 
                     context.ReportDiagnostic(diagnostic);
                     return;
@@ -112,11 +133,22 @@ namespace CallOrPassAnalyzer
 
         private static bool IsMemberAccess(IdentifierNameSyntax identifier)
         {
-            // Check if parent is MemberAccessExpression and identifier is the left side
-            // e.g., in "items.Add()", identifier "items" is Expression (left side)
+            // Direct member access: items.Add(), items.Count
             if (identifier.Parent is MemberAccessExpressionSyntax memberAccess)
             {
                 return memberAccess.Expression == identifier;
+            }
+
+            // Null-conditional: items?.Add(), items?.Count
+            if (identifier.Parent is ConditionalAccessExpressionSyntax conditionalAccess)
+            {
+                return conditionalAccess.Expression == identifier;
+            }
+
+            // Indexer-Zugriff: items[0]
+            if (identifier.Parent is ElementAccessExpressionSyntax elementAccess)
+            {
+                return elementAccess.Expression == identifier;
             }
 
             return false;
@@ -124,9 +156,34 @@ namespace CallOrPassAnalyzer
 
         private static bool IsPassedAsArgument(IdentifierNameSyntax identifier)
         {
-            // Check if the identifier is directly inside an Argument
-            // e.g., in "SaveItems(items)", identifier "items" is inside ArgumentSyntax
-            return identifier.Parent is ArgumentSyntax;
+            // i.e. Save(items)
+            if (identifier.Parent is ArgumentSyntax)
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool IsInsideNameof(IdentifierNameSyntax identifier)
+        {
+            // Check if the identifier is inside a nameof(...) expression
+            var current = identifier.Parent;
+            while (current != null)
+            {
+                if (current is InvocationExpressionSyntax invocation)
+                {
+                    if (invocation.Expression is IdentifierNameSyntax name &&
+                        name.Identifier.Text == "nameof")
+                    {
+                        return true;
+                    }
+                }
+
+                current = current.Parent;
+            }
+
+            return false;
         }
     }
 }
