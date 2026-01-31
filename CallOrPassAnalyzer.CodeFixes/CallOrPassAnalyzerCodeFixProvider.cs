@@ -61,11 +61,12 @@ namespace CallOrPassAnalyzer
             var typeSymbol = semanticModel.GetDeclaredSymbol(typeDecl, cancellationToken);
 
             // Produce a new solution that has all references to that type renamed, including the declaration.
-            var originalSolution = document.Project.Solution;
-            var optionSet = originalSolution.Workspace.Options;
+           
+            var renameOptions = new SymbolRenameOptions();
             var newSolution = await Renamer
-                .RenameSymbolAsync(document.Project.Solution, typeSymbol, newName, optionSet, cancellationToken)
+                .RenameSymbolAsync(document.Project.Solution, typeSymbol, renameOptions, newName, cancellationToken)
                 .ConfigureAwait(false);
+
 
             // Return the new solution with the now-uppercase type name.
             return newSolution;

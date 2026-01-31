@@ -1,19 +1,18 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using VerifyCS = CallOrPassAnalyzer.Test.CSharpAnalyzerVerifier<CallOrPassAnalyzer.CallOrPassAnalyzerAnalyzer>;
+﻿using Xunit;
+using VerifyCS = CallOrPassAnalyzer.Test.Verifiers.CSharpAnalyzerVerifier<CallOrPassAnalyzer.CallOrPassAnalyzerAnalyzer>;
 
 namespace CallOrPassAnalyzer.Test;
 
-[TestClass]
 public class CallOrPassAnalyzerUnitTest
 {
-    [TestMethod]
+    [Fact]
     public async Task EmptyCode_NoDiagnostic()
     {
         var test = @"";
         await VerifyCS.VerifyAnalyzerAsync(test);
     }
 
-    [TestMethod]
+    [Fact]
     public async Task OnlyMemberAccess_NoDiagnostic()
     {
         var test = @"
@@ -31,7 +30,7 @@ class TestClass
         await VerifyCS.VerifyAnalyzerAsync(test);
     }
 
-    [TestMethod]
+    [Fact]
     public async Task OnlyPassAsArgument_NoDiagnostic()
     {
         var test = @"
@@ -51,7 +50,7 @@ class TestClass
         await VerifyCS.VerifyAnalyzerAsync(test);
     }
 
-    [TestMethod]
+    [Fact]
     public async Task BothCallAndPass_Diagnostic()
     {
         var test = @"
@@ -75,7 +74,7 @@ class TestClass
         await VerifyCS.VerifyAnalyzerAsync(test, expected);
     }
 
-    [TestMethod]
+    [Fact]
     public async Task LocalVariable_NoDiagnostic()
     {
         var test = @"
@@ -96,7 +95,7 @@ class TestClass
         await VerifyCS.VerifyAnalyzerAsync(test);
     }
 
-    [TestMethod]
+    [Fact]
     public async Task NullConditionalAccess_AndPass_Diagnostic()
     {
         var test = @"
@@ -120,7 +119,7 @@ class TestClass
         await VerifyCS.VerifyAnalyzerAsync(test, expected);
     }
 
-    [TestMethod]
+    [Fact]
     public async Task IndexerAccess_AndPass_Diagnostic()
     {
         var test = @"
@@ -144,7 +143,7 @@ class TestClass
         await VerifyCS.VerifyAnalyzerAsync(test, expected);
     }
 
-    [TestMethod]
+    [Fact]
     public async Task NameofUsage_NoDiagnostic()
     {
         var test = @"
@@ -164,7 +163,7 @@ class TestClass
         await VerifyCS.VerifyAnalyzerAsync(test);
     }
 
-    [TestMethod]
+    [Fact]
     public async Task OnlyIndexerAccess_NoDiagnostic()
     {
         var test = @"

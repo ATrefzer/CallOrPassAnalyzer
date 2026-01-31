@@ -1,9 +1,8 @@
-﻿using System;
-using System.Collections.Immutable;
+﻿using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
-namespace CallOrPassAnalyzer.Test
+namespace CallOrPassAnalyzer.Test.Verifiers
 {
     internal static class CSharpVerifierHelper
     {

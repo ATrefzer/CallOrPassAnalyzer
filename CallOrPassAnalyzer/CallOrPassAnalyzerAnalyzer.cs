@@ -1,4 +1,5 @@
-﻿using System.Collections.Immutable;
+﻿using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -52,81 +53,106 @@ namespace CallOrPassAnalyzer
         {
             var methodDeclaration = (MethodDeclarationSyntax)context.Node;
 
+            // Skip methods without parameters — nothing to analyze
+            var parameters = methodDeclaration.ParameterList.Parameters;
+            if (parameters.Count == 0)
+            {
+                return;
+            }
+
             // Skip methods without body (abstract, interface, extern)
             if (methodDeclaration.Body == null && methodDeclaration.ExpressionBody == null)
             {
                 return;
             }
 
-            // Get the method body (either block body or expression body)
             var body = (SyntaxNode)methodDeclaration.Body
                        ?? methodDeclaration.ExpressionBody;
 
             var semanticModel = context.SemanticModel;
+            var cancellationToken = context.CancellationToken;
 
-            foreach (var parameter in methodDeclaration.ParameterList.Parameters)
+            // Resolve parameter symbols upfront (one GetDeclaredSymbol per parameter)
+            var parameterNames = new HashSet<string>();
+            var parameterMap = new Dictionary<ISymbol, ParameterSyntax>(SymbolEqualityComparer.Default);
+
+            foreach (var param in parameters)
             {
-                AnalyzeParameter(context, parameter, body, semanticModel);
+                var symbol = semanticModel.GetDeclaredSymbol(param, cancellationToken);
+                if (symbol != null)
+                {
+                    parameterNames.Add(param.Identifier.Text);
+                    parameterMap[symbol] = param;
+                }
             }
-        }
 
-        private static void AnalyzeParameter(
-            SyntaxNodeAnalysisContext context,
-            ParameterSyntax parameter,
-            SyntaxNode body,
-            SemanticModel semanticModel)
-        {
-            // Get the symbol of the parameter
-            var parameterSymbol = semanticModel.GetDeclaredSymbol(parameter);
-            if (parameterSymbol == null)
+            if (parameterMap.Count == 0)
             {
                 return;
             }
 
-            var hasMemberAccess = false;
-            var isPassedAsArgument = false;
+            // Track findings per parameter symbol
+            var hasMemberAccess = new HashSet<ISymbol>(SymbolEqualityComparer.Default);
+            var isPassedAsArg = new HashSet<ISymbol>(SymbolEqualityComparer.Default);
 
-            // Find all usages of this identifier in body
-            var identifiers = body.DescendantNodes()
-                .OfType<IdentifierNameSyntax>();
-
-            foreach (var identifier in identifiers)
+            // Single pass over all identifiers in the body
+            foreach (var identifier in body.DescendantNodes().OfType<IdentifierNameSyntax>())
             {
-                // Prüfen: Verweist dieser Identifier auf unseren Parameter?
-                var symbol = semanticModel.GetSymbolInfo(identifier).Symbol;
+                cancellationToken.ThrowIfCancellationRequested();
 
-                if (!SymbolEqualityComparer.Default.Equals(symbol, parameterSymbol))
+                // 1. Fast text pre-filter — pure string compare, no semantic work
+                if (!parameterNames.Contains(identifier.Identifier.Text))
                 {
                     continue;
                 }
 
-                // Special case: ignore nameof(parameter)
+                // 2. Cheap syntax checks — skip identifiers used in non-interesting ways
+                //    (assignments, returns, arithmetic, etc.)
+                var isMember = IsMemberAccess(identifier);
+                var isArg = IsPassedAsArgument(identifier);
+                if (!isMember && !isArg)
+                {
+                    continue;
+                }
+
+                // 3. Skip nameof(parameter) expressions
                 if (IsInsideNameof(identifier))
                 {
                     continue;
                 }
 
-                if (IsMemberAccess(identifier))
+                // 4. Expensive semantic check — only reached for identifiers that:
+                //    - match a parameter name AND are a member access or argument
+                var symbol = semanticModel.GetSymbolInfo(identifier, cancellationToken).Symbol;
+                if (symbol == null || !parameterMap.TryGetValue(symbol, out var paramSyntax))
                 {
-                    hasMemberAccess = true;
+                    continue;
                 }
 
-                // Check: Is this passed as an argument? (e.g., "SaveItems(items)")
-                if (IsPassedAsArgument(identifier))
+                // 5. Track and check for violation
+                if (isMember)
                 {
-                    isPassedAsArgument = true;
+                    hasMemberAccess.Add(symbol);
                 }
 
-                if (hasMemberAccess && isPassedAsArgument)
+                if (isArg)
                 {
-                    // Violation found
-                    var diagnostic = Diagnostic.Create(
-                        Rule,
-                        parameter.Identifier.GetLocation(),
-                        parameterSymbol.Name);
+                    isPassedAsArg.Add(symbol);
+                }
 
-                    context.ReportDiagnostic(diagnostic);
-                    return;
+                if (hasMemberAccess.Contains(symbol) && isPassedAsArg.Contains(symbol))
+                {
+                    context.ReportDiagnostic(
+                        Diagnostic.Create(Rule, paramSyntax.Identifier.GetLocation(), symbol.Name));
+
+                    // Stop tracking this parameter — already reported
+                    parameterMap.Remove(symbol);
+
+                    // All parameters reported — done with this method
+                    if (parameterMap.Count == 0)
+                    {
+                        return;
+                    }
                 }
             }
         }
@@ -145,7 +171,7 @@ namespace CallOrPassAnalyzer
                 return conditionalAccess.Expression == identifier;
             }
 
-            // Indexer-Zugriff: items[0]
+            // Indexer access: items[0]
             if (identifier.Parent is ElementAccessExpressionSyntax elementAccess)
             {
                 return elementAccess.Expression == identifier;
@@ -156,13 +182,7 @@ namespace CallOrPassAnalyzer
 
         private static bool IsPassedAsArgument(IdentifierNameSyntax identifier)
         {
-            // i.e. Save(items)
-            if (identifier.Parent is ArgumentSyntax)
-            {
-                return true;
-            }
-
-            return false;
+            return identifier.Parent is ArgumentSyntax;
         }
 
         private static bool IsInsideNameof(IdentifierNameSyntax identifier)
