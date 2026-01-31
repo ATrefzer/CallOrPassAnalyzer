@@ -1,10 +1,8 @@
 ﻿using System.Collections.Immutable;
 using System.Composition;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -49,7 +47,7 @@ namespace CallOrPassAnalyzer
             */
         }
 
-        async Task<Solution> MakeUppercaseAsync(Document document, TypeDeclarationSyntax typeDecl,
+        private async Task<Solution> MakeUppercaseAsync(Document document, TypeDeclarationSyntax typeDecl,
             CancellationToken cancellationToken)
         {
             // Compute new uppercase name.
@@ -61,7 +59,7 @@ namespace CallOrPassAnalyzer
             var typeSymbol = semanticModel.GetDeclaredSymbol(typeDecl, cancellationToken);
 
             // Produce a new solution that has all references to that type renamed, including the declaration.
-           
+
             var renameOptions = new SymbolRenameOptions();
             var newSolution = await Renamer
                 .RenameSymbolAsync(document.Project.Solution, typeSymbol, renameOptions, newName, cancellationToken)

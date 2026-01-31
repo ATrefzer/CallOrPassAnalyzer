@@ -5,9 +5,9 @@
 
 ### New Rules
 
-Rule ID | Category | Severity | Notes
---------|----------|----------|-------
-COP001  | Design   | Warning  | Parameter is both called and passed
+ Rule ID | Category | Severity | Notes                               
+---------|----------|----------|-------------------------------------
+ COP001  | Design   | Warning  | Parameter is both called and passed 
 
 
 

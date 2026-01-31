@@ -1,5 +1,6 @@
 ﻿using Xunit;
-using VerifyCS = CallOrPassAnalyzer.Test.Verifiers.CSharpAnalyzerVerifier<CallOrPassAnalyzer.CallOrPassAnalyzerAnalyzer>;
+using VerifyCS =
+    CallOrPassAnalyzer.Test.Verifiers.CSharpAnalyzerVerifier<CallOrPassAnalyzer.CallOrPassAnalyzerAnalyzer>;
 
 namespace CallOrPassAnalyzer.Test;
 
@@ -91,7 +92,7 @@ class TestClass
 
     void Save(List<int> x) { }
 }";
-        // Lokale Variablen sind OK - nur Parameter werden geprüft
+        // Local variables are fine. Only arguments are checked.
         await VerifyCS.VerifyAnalyzerAsync(test);
     }
 
@@ -159,7 +160,7 @@ class TestClass
 
     void Save(List<int> x) { }
 }";
-        // nameof() zählt nicht als Member-Zugriff
+        // nameof() does not count as member access
         await VerifyCS.VerifyAnalyzerAsync(test);
     }
 
@@ -177,7 +178,33 @@ class TestClass
         items[1] = 42;
     }
 }";
-        // Nur Member-Zugriff (Indexer), kein Pass → OK
+        // Only member access via indexer, pass
         await VerifyCS.VerifyAnalyzerAsync(test);
+    }
+
+
+    [Fact]
+    public async Task Identifier_Wrapped_In_Brackets_Or_Cast_Diagnostic()
+    {
+        var test = @"
+using System;
+class TestClass : IDisposable
+{
+    public void Dispose() {}
+    public void TestMethod(TestClass {|#0:param|}) 
+    {
+        SomeOtherMethod(param); // Pass
+        ((IDisposable)param).Dispose(); 
+    }
+
+    private void SomeOtherMethod(TestClass myClass)
+    {
+    }
+};";
+
+        var expected = VerifyCS.Diagnostic("COP001")
+            .WithLocation(0)
+            .WithArguments("param");
+        await VerifyCS.VerifyAnalyzerAsync(test, expected);
     }
 }

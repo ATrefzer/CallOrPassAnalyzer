@@ -1,30 +1,28 @@
 ﻿using Microsoft.CodeAnalysis.CodeRefactorings;
 using Microsoft.CodeAnalysis.CSharp.Testing;
 using Microsoft.CodeAnalysis.Testing;
-using Microsoft.CodeAnalysis.Testing.Verifiers;
 
-namespace CallOrPassAnalyzer.Test.Verifiers
+namespace CallOrPassAnalyzer.Test.Verifiers;
+
+public static partial class CSharpCodeRefactoringVerifier<TCodeRefactoring>
+    where TCodeRefactoring : CodeRefactoringProvider, new()
 {
-    public static partial class CSharpCodeRefactoringVerifier<TCodeRefactoring>
-        where TCodeRefactoring : CodeRefactoringProvider, new()
+    public class Test : CSharpCodeRefactoringTest<TCodeRefactoring, DefaultVerifier>
     {
-        public class Test : CSharpCodeRefactoringTest<TCodeRefactoring, DefaultVerifier>
+        public Test()
         {
-            public Test()
+            // Multi-Targeting: .NET Standard 2.0 ist kompatibel mit .NET Framework 4.7.2 und .NET 10
+            ReferenceAssemblies = ReferenceAssemblies.NetStandard.NetStandard20;
+
+            SolutionTransforms.Add((solution, projectId) =>
             {
-                // Multi-Targeting: .NET Standard 2.0 ist kompatibel mit .NET Framework 4.7.2 und .NET 10
-                ReferenceAssemblies = ReferenceAssemblies.NetStandard.NetStandard20;
+                var compilationOptions = solution.GetProject(projectId).CompilationOptions;
+                compilationOptions = compilationOptions.WithSpecificDiagnosticOptions(
+                    compilationOptions.SpecificDiagnosticOptions.SetItems(CSharpVerifierHelper.NullableWarnings));
+                solution = solution.WithProjectCompilationOptions(projectId, compilationOptions);
 
-                SolutionTransforms.Add((solution, projectId) =>
-                {
-                    var compilationOptions = solution.GetProject(projectId).CompilationOptions;
-                    compilationOptions = compilationOptions.WithSpecificDiagnosticOptions(
-                        compilationOptions.SpecificDiagnosticOptions.SetItems(CSharpVerifierHelper.NullableWarnings));
-                    solution = solution.WithProjectCompilationOptions(projectId, compilationOptions);
-
-                    return solution;
-                });
-            }
+                return solution;
+            });
         }
     }
 }

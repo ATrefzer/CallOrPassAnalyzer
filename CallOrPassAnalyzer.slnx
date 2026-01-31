@@ -1,7 +1,7 @@
 <Solution>
-  <Project Path="CallOrPassAnalyzer.CodeFixes/CallOrPassAnalyzer.CodeFixes.csproj" />
-  <Project Path="CallOrPassAnalyzer.Package/CallOrPassAnalyzer.Package.csproj" />
-  <Project Path="CallOrPassAnalyzer.Test/CallOrPassAnalyzer.Test.csproj" />
-  <Project Path="CallOrPassAnalyzer.Vsix/CallOrPassAnalyzer.Vsix.csproj" />
-  <Project Path="CallOrPassAnalyzer/CallOrPassAnalyzer.csproj" />
+    <Project Path="CallOrPassAnalyzer.CodeFixes/CallOrPassAnalyzer.CodeFixes.csproj"/>
+    <Project Path="CallOrPassAnalyzer.Package/CallOrPassAnalyzer.Package.csproj"/>
+    <Project Path="CallOrPassAnalyzer.Test/CallOrPassAnalyzer.Test.csproj"/>
+    <Project Path="CallOrPassAnalyzer.Vsix/CallOrPassAnalyzer.Vsix.csproj"/>
+    <Project Path="CallOrPassAnalyzer/CallOrPassAnalyzer.csproj"/>
 </Solution>
