@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using Microsoft.CodeAnalysis;
@@ -15,49 +15,33 @@ public class CallOrPassAnalyzerAnalyzer : DiagnosticAnalyzer
 
     private const string Category = "Design";
 
-    private static readonly LocalizableString Title =
-        "Parameter is both called and passed";
-
-    private static readonly LocalizableString MessageFormat =
-        "Parameter '{0}' has both member access and is passed as argument - consider separating these concerns";
-
-    private static readonly LocalizableString Description =
-        "A method should either call methods on a parameter or pass it to other methods, not both. " +
-        "This is known as the 'Either call or pass' rule from 'Five Lines of Code'.";
-
     private static readonly DiagnosticDescriptor Rule = new(
         DiagnosticId,
-        Title,
-        MessageFormat,
+        "Parameter is both called and passed",
+        "Parameter '{0}' has both member access and is passed as argument - consider separating these concerns",
         Category,
         DiagnosticSeverity.Warning,
-        true,
-        Description);
+        isEnabledByDefault: true,
+        "A method should either call methods on a parameter or pass it to other methods, not both. " +
+        "This is known as the 'Either call or pass' rule from 'Five Lines of Code'.");
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics
         => ImmutableArray.Create(Rule);
 
     public override void Initialize(AnalysisContext context)
     {
-        // Ignore generated code (designer files, etc.)
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
-
-        // Allow parallel execution for better performance
         context.EnableConcurrentExecution();
-
-        // Register for method declarations
-        context.RegisterSyntaxNodeAction(AnalyzeMethod, SyntaxKind.MethodDeclaration);
+        context.RegisterSyntaxNodeAction(Analyze, SyntaxKind.MethodDeclaration);
     }
 
-    private static void AnalyzeMethod(SyntaxNodeAnalysisContext context)
+    private static void Analyze(SyntaxNodeAnalysisContext context)
     {
         var methodDeclaration = (MethodDeclarationSyntax)context.Node;
 
-        // Skip methods without parameters — nothing to analyze
         var parameters = methodDeclaration.ParameterList.Parameters;
         if (parameters.Count == 0) return;
 
-        // Skip methods without body (abstract, interface, extern)
         if (methodDeclaration.Body == null && methodDeclaration.ExpressionBody == null) return;
 
         var body = (SyntaxNode)methodDeclaration.Body
@@ -82,7 +66,6 @@ public class CallOrPassAnalyzerAnalyzer : DiagnosticAnalyzer
 
         if (parameterMap.Count == 0) return;
 
-        // Track findings per parameter symbol
         var hasMemberAccess = new HashSet<ISymbol>(SymbolEqualityComparer.Default);
         var isPassedAsArg = new HashSet<ISymbol>(SymbolEqualityComparer.Default);
 
@@ -94,23 +77,19 @@ public class CallOrPassAnalyzerAnalyzer : DiagnosticAnalyzer
             // 1. Fast text pre-filter — pure string compare, no semantic work
             if (!parameterNames.Contains(identifier.Identifier.Text)) continue;
 
-            // 2. Cheap syntax checks — skip identifiers used in non-interesting ways
-            //    (assignments, returns, arithmetic, etc.)
+            // 2. Cheap syntax checks
             var isMember = IsMemberAccess(identifier);
-            var isArg = IsPassedAsArgument(identifier);
+            var isArg = identifier.Parent is ArgumentSyntax;
             if (!isMember && !isArg) continue;
 
             // 3. Skip nameof(parameter) expressions
-            if (IsInsideNameof(identifier)) continue;
+            if (AnalyzerHelpers.IsInsideNameof(identifier)) continue;
 
-            // 4. Expensive semantic check — only reached for identifiers that:
-            //    - match a parameter name AND are a member access or argument
+            // 4. Expensive semantic check
             var symbol = semanticModel.GetSymbolInfo(identifier, cancellationToken).Symbol;
             if (symbol == null || !parameterMap.TryGetValue(symbol, out var paramSyntax)) continue;
 
-            // 5. Track and check for violation
             if (isMember) hasMemberAccess.Add(symbol);
-
             if (isArg) isPassedAsArg.Add(symbol);
 
             if (hasMemberAccess.Contains(symbol) && isPassedAsArg.Contains(symbol))
@@ -118,60 +97,25 @@ public class CallOrPassAnalyzerAnalyzer : DiagnosticAnalyzer
                 context.ReportDiagnostic(
                     Diagnostic.Create(Rule, paramSyntax.Identifier.GetLocation(), symbol.Name));
 
-                // Stop tracking this parameter — already reported
                 parameterMap.Remove(symbol);
-
-                // All parameters reported — done with this method
                 if (parameterMap.Count == 0) return;
             }
         }
     }
 
-
     private static bool IsMemberAccess(IdentifierNameSyntax identifier)
     {
-        // We start at the found identifier inside the body
+        // Walk upwards past parentheses and casts: ((IDisposable)param).Dispose()
         SyntaxNode current = identifier;
+        while (current.Parent is ParenthesizedExpressionSyntax or CastExpressionSyntax)
+            current = current.Parent;
 
-        // Walk upwards as long as the identifier is inside braces ore casts
-        // Example: ((IDisposable)param).Dispose()
-        while (current.Parent is ParenthesizedExpressionSyntax or CastExpressionSyntax) current = current.Parent;
-
-        // Now check if this "highest expression" is on the left side
         return current.Parent switch
         {
-            // param.Member (Expression is the left side)
-            MemberAccessExpressionSyntax memberAccess => memberAccess.Expression == current,
-
-            // param?.Member
-            ConditionalAccessExpressionSyntax conditionalAccess => conditionalAccess.Expression == current,
-
-            // param[0]
-            ElementAccessExpressionSyntax elementAccess => elementAccess.Expression == current,
-
-            _ => false
+            MemberAccessExpressionSyntax m      => m.Expression == current,
+            ConditionalAccessExpressionSyntax c => c.Expression == current,
+            ElementAccessExpressionSyntax e     => e.Expression == current,
+            _                                   => false
         };
-    }
-
-    private static bool IsPassedAsArgument(IdentifierNameSyntax identifier)
-    {
-        return identifier.Parent is ArgumentSyntax;
-    }
-
-    private static bool IsInsideNameof(IdentifierNameSyntax identifier)
-    {
-        // Check if the identifier is inside a nameof(...) expression
-        var current = identifier.Parent;
-        while (current != null)
-        {
-            if (current is InvocationExpressionSyntax invocation)
-                if (invocation.Expression is IdentifierNameSyntax name &&
-                    name.Identifier.Text == "nameof")
-                    return true;
-
-            current = current.Parent;
-        }
-
-        return false;
     }
 }

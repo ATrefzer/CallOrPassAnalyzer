@@ -1,16 +1,15 @@
-﻿using Xunit;
+using Xunit;
 using VerifyCS =
     CallOrPassAnalyzer.Test.Verifiers.CSharpAnalyzerVerifier<CallOrPassAnalyzer.CallOrPassAnalyzerAnalyzer>;
 
 namespace CallOrPassAnalyzer.Test;
 
-public class CallOrPassAnalyzerUnitTest
+public class CallOrPassAnalyzerTests
 {
     [Fact]
     public async Task EmptyCode_NoDiagnostic()
     {
-        var test = @"";
-        await VerifyCS.VerifyAnalyzerAsync(test);
+        await VerifyCS.VerifyAnalyzerAsync(@"");
     }
 
     [Fact]
@@ -67,7 +66,6 @@ class TestClass
 
     void Save(List<int> x) { }
 }";
-
         var expected = VerifyCS.Diagnostic("COP001")
             .WithLocation(0)
             .WithArguments("items");
@@ -112,7 +110,6 @@ class TestClass
 
     void Save(List<int> x) { }
 }";
-
         var expected = VerifyCS.Diagnostic("COP001")
             .WithLocation(0)
             .WithArguments("items");
@@ -136,7 +133,6 @@ class TestClass
 
     void Save(List<int> x) { }
 }";
-
         var expected = VerifyCS.Diagnostic("COP001")
             .WithLocation(0)
             .WithArguments("items");
@@ -178,10 +174,8 @@ class TestClass
         items[1] = 42;
     }
 }";
-        // Only member access via indexer, pass
         await VerifyCS.VerifyAnalyzerAsync(test);
     }
-
 
     [Fact]
     public async Task Identifier_Wrapped_In_Brackets_Or_Cast_Diagnostic()
@@ -191,20 +185,20 @@ using System;
 class TestClass : IDisposable
 {
     public void Dispose() {}
-    public void TestMethod(TestClass {|#0:param|}) 
+    public void TestMethod(TestClass {|#0:param|})
     {
         SomeOtherMethod(param); // Pass
-        ((IDisposable)param).Dispose(); 
+        ((IDisposable)param).Dispose();
     }
 
     private void SomeOtherMethod(TestClass myClass)
     {
     }
 };";
-
         var expected = VerifyCS.Diagnostic("COP001")
             .WithLocation(0)
             .WithArguments("param");
+
         await VerifyCS.VerifyAnalyzerAsync(test, expected);
     }
 }
