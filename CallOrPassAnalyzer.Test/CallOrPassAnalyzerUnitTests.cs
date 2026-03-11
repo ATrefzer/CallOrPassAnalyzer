@@ -1,16 +1,19 @@
-﻿using Xunit;
+using Xunit;
 using VerifyCS =
     CallOrPassAnalyzer.Test.Verifiers.CSharpAnalyzerVerifier<CallOrPassAnalyzer.CallOrPassAnalyzerAnalyzer>;
+using VerifyEnumCS =
+    CallOrPassAnalyzer.Test.Verifiers.CSharpAnalyzerVerifier<CallOrPassAnalyzer.RawEnumPassAnalyzer>;
 
 namespace CallOrPassAnalyzer.Test;
 
 public class CallOrPassAnalyzerUnitTest
 {
+    // ── COP001: Call or pass ───────────────────────────────────────────────
+
     [Fact]
     public async Task EmptyCode_NoDiagnostic()
     {
-        var test = @"";
-        await VerifyCS.VerifyAnalyzerAsync(test);
+        await VerifyCS.VerifyAnalyzerAsync(@"");
     }
 
     [Fact]
@@ -67,7 +70,6 @@ class TestClass
 
     void Save(List<int> x) { }
 }";
-
         var expected = VerifyCS.Diagnostic("COP001")
             .WithLocation(0)
             .WithArguments("items");
@@ -112,7 +114,6 @@ class TestClass
 
     void Save(List<int> x) { }
 }";
-
         var expected = VerifyCS.Diagnostic("COP001")
             .WithLocation(0)
             .WithArguments("items");
@@ -136,7 +137,6 @@ class TestClass
 
     void Save(List<int> x) { }
 }";
-
         var expected = VerifyCS.Diagnostic("COP001")
             .WithLocation(0)
             .WithArguments("items");
@@ -178,10 +178,33 @@ class TestClass
         items[1] = 42;
     }
 }";
-        // Only member access via indexer, pass
         await VerifyCS.VerifyAnalyzerAsync(test);
     }
 
+    [Fact]
+    public async Task Identifier_Wrapped_In_Brackets_Or_Cast_Diagnostic()
+    {
+        var test = @"
+using System;
+class TestClass : IDisposable
+{
+    public void Dispose() {}
+    public void TestMethod(TestClass {|#0:param|})
+    {
+        SomeOtherMethod(param); // Pass
+        ((IDisposable)param).Dispose();
+    }
+
+    private void SomeOtherMethod(TestClass myClass)
+    {
+    }
+};";
+        var expected = VerifyCS.Diagnostic("COP001")
+            .WithLocation(0)
+            .WithArguments("param");
+
+        await VerifyCS.VerifyAnalyzerAsync(test, expected);
+    }
 
     // ── COP002: Raw enum value passed as argument ──────────────────────────
 
@@ -200,11 +223,11 @@ class TestClass
 
     void Process(Status s) { }
 }";
-        var expected = VerifyCS.Diagnostic("COP002")
+        var expected = VerifyEnumCS.Diagnostic("COP002")
             .WithLocation(0)
             .WithArguments("Status.Active");
 
-        await VerifyCS.VerifyAnalyzerAsync(test, expected);
+        await VerifyEnumCS.VerifyAnalyzerAsync(test, expected);
     }
 
     [Fact]
@@ -221,7 +244,7 @@ class TestClass
         if (status != Status.Inactive) { }
     }
 }";
-        await VerifyCS.VerifyAnalyzerAsync(test);
+        await VerifyEnumCS.VerifyAnalyzerAsync(test);
     }
 
     [Fact]
@@ -241,7 +264,7 @@ class TestClass
         }
     }
 }";
-        await VerifyCS.VerifyAnalyzerAsync(test);
+        await VerifyEnumCS.VerifyAnalyzerAsync(test);
     }
 
     [Fact]
@@ -259,7 +282,7 @@ class TestClass
 
     void Process(Status s) { }
 }";
-        await VerifyCS.VerifyAnalyzerAsync(test);
+        await VerifyEnumCS.VerifyAnalyzerAsync(test);
     }
 
     [Fact]
@@ -277,7 +300,7 @@ class TestClass
 
     void Process(Status s) { }
 }";
-        await VerifyCS.VerifyAnalyzerAsync(test);
+        await VerifyEnumCS.VerifyAnalyzerAsync(test);
     }
 
     [Fact]
@@ -296,7 +319,7 @@ class TestClass
 
     void Process(Priority p) { }
 }";
-        await VerifyCS.VerifyAnalyzerAsync(test);
+        await VerifyEnumCS.VerifyAnalyzerAsync(test);
     }
 
     [Fact]
@@ -314,7 +337,7 @@ class TestClass
 
     void Log(string s) { }
 }";
-        await VerifyCS.VerifyAnalyzerAsync(test);
+        await VerifyEnumCS.VerifyAnalyzerAsync(test);
     }
 
     [Fact]
@@ -333,38 +356,13 @@ class TestClass
 
     void Process(Status s) { }
 }";
-        var expected0 = VerifyCS.Diagnostic("COP002")
+        var expected0 = VerifyEnumCS.Diagnostic("COP002")
             .WithLocation(0)
             .WithArguments("Status.Active");
-        var expected1 = VerifyCS.Diagnostic("COP002")
+        var expected1 = VerifyEnumCS.Diagnostic("COP002")
             .WithLocation(1)
             .WithArguments("Status.Inactive");
 
-        await VerifyCS.VerifyAnalyzerAsync(test, expected0, expected1);
-    }
-
-    [Fact]
-    public async Task Identifier_Wrapped_In_Brackets_Or_Cast_Diagnostic()
-    {
-        var test = @"
-using System;
-class TestClass : IDisposable
-{
-    public void Dispose() {}
-    public void TestMethod(TestClass {|#0:param|}) 
-    {
-        SomeOtherMethod(param); // Pass
-        ((IDisposable)param).Dispose(); 
-    }
-
-    private void SomeOtherMethod(TestClass myClass)
-    {
-    }
-};";
-
-        var expected = VerifyCS.Diagnostic("COP001")
-            .WithLocation(0)
-            .WithArguments("param");
-        await VerifyCS.VerifyAnalyzerAsync(test, expected);
+        await VerifyEnumCS.VerifyAnalyzerAsync(test, expected0, expected1);
     }
 }
