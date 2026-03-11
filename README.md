@@ -93,12 +93,12 @@ Because the package is marked as `DevelopmentDependency`, it does not become a r
 
 The VSIX installs the analyzer globally into Visual Studio. It is active for every solution you open without any per-project configuration.
 
-1. Download the `.vsix` file from the [Releases](https://github.com/ATrefzer/CallOrPassAnalyzer/releases) page
+1. Build the `CallOrPassAnalyzer.Vsix` project.
 2. Close Visual Studio
-3. Double-click the `.vsix` file and follow the installer
+3. Double-click the generated `.vsix` file and follow the installer
 4. Reopen Visual Studio — the analyzer is active immediately
 
-Supported editions: Community, Professional, Enterprise (Visual Studio 2022, versions 17.x and 18.x, 64-bit).
+Supported editions: Community, Professional, Enterprise (Visual Studio 2026, versions 18.x, 64-bit).
 
 > **Note:** Diagnostics from a VSIX analyzer are shown in the editor and Error List while you work, but are **not reported during a command-line build** (`dotnet build` / MSBuild). Use the NuGet package if you need build-time diagnostics in CI.
 
