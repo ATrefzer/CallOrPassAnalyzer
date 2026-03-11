@@ -7,7 +7,7 @@ namespace CallOrPassAnalyzer.Test;
 public class PassEnumParameterAnalyzerTests
 {
     [Fact]
-    public async Task RawEnumPassedAsArgument_Diagnostic()
+    public async Task EnumLiteralPassedAsArgument_Diagnostic()
     {
         var test = @"
 enum Status { Active, Inactive }
@@ -29,7 +29,7 @@ class TestClass
     }
 
     [Fact]
-    public async Task RawEnumUsedInComparison_NoDiagnostic()
+    public async Task EnumLiteralUsedInComparison_NoDiagnostic()
     {
         var test = @"
 enum Status { Active, Inactive }
@@ -46,7 +46,7 @@ class TestClass
     }
 
     [Fact]
-    public async Task RawEnumUsedInSwitchCase_NoDiagnostic()
+    public async Task EnumLiteralUsedInSwitchCase_NoDiagnostic()
     {
         var test = @"
 enum Status { Active, Inactive }
@@ -84,7 +84,7 @@ class TestClass
     }
 
     [Fact]
-    public async Task NoEnumParameter_RawEnumPassed_NoDiagnostic()
+    public async Task NoEnumParameter_EnumLiteralPassed_NoDiagnostic()
     {
         var test = @"
 enum Status { Active, Inactive }
@@ -121,7 +121,7 @@ class TestClass
     }
 
     [Fact]
-    public async Task RawEnumInNameof_NoDiagnostic()
+    public async Task EnumLiteralInNameof_NoDiagnostic()
     {
         var test = @"
 enum Status { Active, Inactive }
@@ -139,7 +139,7 @@ class TestClass
     }
 
     [Fact]
-    public async Task MultipleRawEnumsPassed_MultipleDiagnostics()
+    public async Task MultipleEnumLiteralsPassed_MultipleDiagnostics()
     {
         var test = @"
 enum Status { Active, Inactive }

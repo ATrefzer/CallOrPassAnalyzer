@@ -17,13 +17,13 @@ public class PassEnumParameterAnalyzer : DiagnosticAnalyzer
 
     private static readonly DiagnosticDescriptor Rule = new(
         DiagnosticId,
-        "Raw enum value passed as argument",
-        "Raw enum value '{0}' is passed as argument, but a parameter of that enum type is already available - pass the parameter instead",
+        "Enum value passed as argument",
+        "Enum value '{0}' is passed as argument, but a enum literal is passed to another called method",
         Category,
         DiagnosticSeverity.Warning,
-        isEnabledByDefault: true,
-        "When a method receives an enum parameter, raw enum values of the same type should not be passed to " +
-        "other methods. Pass the parameter instead. Raw enum values may still be used in comparisons.");
+        true,
+        "When a method receives an enum parameter, literal values of the same type should not be passed to " +
+        "other methods. Pass the parameter instead. The enum values may still be used in comparisons.");
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics
         => ImmutableArray.Create(Rule);
@@ -61,7 +61,7 @@ public class PassEnumParameterAnalyzer : DiagnosticAnalyzer
 
         if (enumParamTypes.Count == 0) return;
 
-        // Scan for raw enum values passed directly as arguments
+        // Scan for enum values passed directly as arguments
         foreach (var memberAccess in body.DescendantNodes().OfType<MemberAccessExpressionSyntax>())
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -73,7 +73,24 @@ public class PassEnumParameterAnalyzer : DiagnosticAnalyzer
             if (AnalyzerHelpers.IsInsideNameof(memberAccess)) continue;
 
             // Resolve the symbol — must be an enum field
+
+            /*
+            A MemberAccessExpressionSyntax syntactically represents an expression of the form X.Y.
+            The symbol is the semantic resolution of this expression — i.e., what .Y actually points to in the type system.
+            semanticModel.GetSymbolInfo(memberAccess).Symbol returns an ISymbol that can vary depending on the context:
+
+            Expression           Symbol type
+            -----------------------------------------
+            MyEnum.Value         IFieldSymbol
+            obj.MyProperty       IPropertySymbol
+            obj.MyMethod         IMethodSymbol
+            MyClass.StaticField  IFieldSymbol
+
+               GetSymbolInfo resolves .Value and returns an IFieldSymbol, because enum members are modeled as fields in Roslyn.
+            */
             var symbol = semanticModel.GetSymbolInfo(memberAccess, cancellationToken).Symbol;
+
+            // Symbol resolves to an enum literal
             if (symbol is not IFieldSymbol field || field.ContainingType?.TypeKind != TypeKind.Enum)
                 continue;
 
