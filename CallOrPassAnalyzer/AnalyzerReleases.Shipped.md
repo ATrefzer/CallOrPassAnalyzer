@@ -7,7 +7,8 @@
 
  Rule ID | Category | Severity | Notes                               
 ---------|----------|----------|-------------------------------------
- COP001  | Design   | Warning  | Parameter is both called and passed 
+ COP001  | Design   | Warning  | Parameter is both called and passed
+ COP002  | Design   | Warning  | Raw enum value passed as argument when enum parameter is available
 
 
 

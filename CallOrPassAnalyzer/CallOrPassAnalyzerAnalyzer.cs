@@ -12,6 +12,7 @@ namespace CallOrPassAnalyzer;
 public class CallOrPassAnalyzerAnalyzer : DiagnosticAnalyzer
 {
     public const string DiagnosticId = "COP001";
+    public const string RawEnumDiagnosticId = "COP002";
 
     private const string Category = "Design";
 
@@ -34,8 +35,27 @@ public class CallOrPassAnalyzerAnalyzer : DiagnosticAnalyzer
         true,
         Description);
 
+    private static readonly LocalizableString RawEnumTitle =
+        "Raw enum value passed as argument";
+
+    private static readonly LocalizableString RawEnumMessageFormat =
+        "Raw enum value '{0}' is passed as argument, but a parameter of that enum type is already available - pass the parameter instead";
+
+    private static readonly LocalizableString RawEnumDescription =
+        "When a method receives an enum parameter, raw enum values of the same type should not be passed to " +
+        "other methods. Pass the parameter instead. Raw enum values may still be used in comparisons.";
+
+    private static readonly DiagnosticDescriptor RuleRawEnum = new(
+        RawEnumDiagnosticId,
+        RawEnumTitle,
+        RawEnumMessageFormat,
+        Category,
+        DiagnosticSeverity.Warning,
+        true,
+        RawEnumDescription);
+
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics
-        => ImmutableArray.Create(Rule);
+        => ImmutableArray.Create(Rule, RuleRawEnum);
 
     public override void Initialize(AnalysisContext context)
     {
@@ -47,6 +67,7 @@ public class CallOrPassAnalyzerAnalyzer : DiagnosticAnalyzer
 
         // Register for method declarations
         context.RegisterSyntaxNodeAction(AnalyzeMethod, SyntaxKind.MethodDeclaration);
+        context.RegisterSyntaxNodeAction(AnalyzeMethodForRawEnumPass, SyntaxKind.MethodDeclaration);
     }
 
     private static void AnalyzeMethod(SyntaxNodeAnalysisContext context)
@@ -158,10 +179,10 @@ public class CallOrPassAnalyzerAnalyzer : DiagnosticAnalyzer
         return identifier.Parent is ArgumentSyntax;
     }
 
-    private static bool IsInsideNameof(IdentifierNameSyntax identifier)
+    private static bool IsInsideNameof(SyntaxNode node)
     {
-        // Check if the identifier is inside a nameof(...) expression
-        var current = identifier.Parent;
+        // Check if the node is inside a nameof(...) expression
+        var current = node.Parent;
         while (current != null)
         {
             if (current is InvocationExpressionSyntax invocation)
@@ -173,5 +194,57 @@ public class CallOrPassAnalyzerAnalyzer : DiagnosticAnalyzer
         }
 
         return false;
+    }
+
+    private static void AnalyzeMethodForRawEnumPass(SyntaxNodeAnalysisContext context)
+    {
+        var methodDeclaration = (MethodDeclarationSyntax)context.Node;
+
+        // Skip methods without parameters — nothing to analyze
+        var parameters = methodDeclaration.ParameterList.Parameters;
+        if (parameters.Count == 0) return;
+
+        // Skip methods without body (abstract, interface, extern)
+        if (methodDeclaration.Body == null && methodDeclaration.ExpressionBody == null) return;
+
+        var body = (SyntaxNode)methodDeclaration.Body
+                   ?? methodDeclaration.ExpressionBody;
+
+        var semanticModel = context.SemanticModel;
+        var cancellationToken = context.CancellationToken;
+
+        // Collect enum types from parameters
+        var enumParamTypes = new HashSet<ITypeSymbol>(SymbolEqualityComparer.Default);
+        foreach (var param in parameters)
+        {
+            var paramSymbol = semanticModel.GetDeclaredSymbol(param, cancellationToken);
+            if (paramSymbol?.Type is INamedTypeSymbol { TypeKind: TypeKind.Enum } enumType)
+                enumParamTypes.Add(enumType);
+        }
+
+        if (enumParamTypes.Count == 0) return;
+
+        // Scan for member access expressions that represent raw enum values passed as arguments
+        foreach (var memberAccess in body.DescendantNodes().OfType<MemberAccessExpressionSyntax>())
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            // Must be directly passed as an argument to a method call
+            if (memberAccess.Parent is not ArgumentSyntax) continue;
+
+            // Skip nameof(MyEnum.Value) — not a real usage
+            if (IsInsideNameof(memberAccess)) continue;
+
+            // Resolve the symbol — must be an enum field
+            var symbol = semanticModel.GetSymbolInfo(memberAccess, cancellationToken).Symbol;
+            if (symbol is not IFieldSymbol field || field.ContainingType?.TypeKind != TypeKind.Enum)
+                continue;
+
+            // Must match the enum type of one of the method's parameters
+            if (!enumParamTypes.Contains(field.ContainingType)) continue;
+
+            context.ReportDiagnostic(
+                Diagnostic.Create(RuleRawEnum, memberAccess.GetLocation(), memberAccess.ToString()));
+        }
     }
 }
