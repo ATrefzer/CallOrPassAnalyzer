@@ -1,10 +1,10 @@
 using Xunit;
 using VerifyCS =
-    CallOrPassAnalyzer.Test.Verifiers.CSharpAnalyzerVerifier<CallOrPassAnalyzer.RawEnumPassAnalyzer>;
+    CallOrPassAnalyzer.Test.Verifiers.CSharpAnalyzerVerifier<CallOrPassAnalyzer.PassEnumParameterAnalyzer>;
 
 namespace CallOrPassAnalyzer.Test;
 
-public class RawEnumPassAnalyzerTests
+public class PassEnumParameterAnalyzerTests
 {
     [Fact]
     public async Task RawEnumPassedAsArgument_Diagnostic()

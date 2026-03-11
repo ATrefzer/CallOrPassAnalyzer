@@ -9,7 +9,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace CallOrPassAnalyzer;
 
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
-public class RawEnumPassAnalyzer : DiagnosticAnalyzer
+public class PassEnumParameterAnalyzer : DiagnosticAnalyzer
 {
     public const string DiagnosticId = "COP002";
 
