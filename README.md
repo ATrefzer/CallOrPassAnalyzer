@@ -69,6 +69,49 @@ void AddDefaults(List<int> items)
 }
 ```
 
+## Installation
+
+### Option 1: NuGet Package (recommended)
+
+The analyzer runs during every build and integrates into all editors that support Roslyn (Visual Studio, Rider, VS Code with C# Dev Kit).
+
+Add the package to your project:
+
+```
+dotnet add package CallOrPassAnalyzer
+```
+
+Or via the Package Manager Console in Visual Studio:
+
+```
+Install-Package CallOrPassAnalyzer
+```
+
+Because the package is marked as `DevelopmentDependency`, it does not become a runtime dependency of your project and will not appear in the published output.
+
+### Option 2: VSIX Extension
+
+The VSIX installs the analyzer globally into Visual Studio. It is active for every solution you open without any per-project configuration.
+
+1. Download the `.vsix` file from the [Releases](https://github.com/ATrefzer/CallOrPassAnalyzer/releases) page
+2. Close Visual Studio
+3. Double-click the `.vsix` file and follow the installer
+4. Reopen Visual Studio — the analyzer is active immediately
+
+Supported editions: Community, Professional, Enterprise (Visual Studio 2022, versions 17.x and 18.x, 64-bit).
+
+> **Note:** Diagnostics from a VSIX analyzer are shown in the editor and Error List while you work, but are **not reported during a command-line build** (`dotnet build` / MSBuild). Use the NuGet package if you need build-time diagnostics in CI.
+
+### Option 3: F5 Debug Instance (for development)
+
+Use this when you want to test or develop the analyzer itself. Pressing F5 on the `CallOrPassAnalyzer.Vsix` project launches an experimental instance of Visual Studio with the extension loaded.
+
+1. Set `CallOrPassAnalyzer.Vsix` as the startup project
+2. Press **F5**
+3. In the experimental instance, open any C# solution — the analyzer is active and breakpoints in the analyzer code are hit
+
+The experimental instance has its own separate settings and extension registry, so it does not interfere with your main Visual Studio installation.
+
 ## Configuration
 
 Disable the rule via `.editorconfig`:
